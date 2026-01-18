@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="SVishList - Вишлист для пар">
+
+  <!-- iOS meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="SVishList">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  
+  <title>SVishList</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js"></script>
+  
+  <script>
+    // Ваша конфигурация Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLspL_8bHSgJaSVKPKu14KPT7M11rRaMU",
+      authDomain: "svishlist.firebaseapp.com",
+      projectId: "svishlist",
+      storageBucket: "svishlist.firebasestorage.app",
+      messagingSenderId: "925427200056",
+      appId: "1:925427200056:web:10a03d1b6d0920c5f9b6cd"
+    };
+
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <script src="main.dart.js" type="application/javascript"></script>
+</body>
+</html>
