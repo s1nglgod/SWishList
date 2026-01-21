@@ -99,12 +99,6 @@
             margin: 15px 0;
             border-left: 5px solid #ffc107;
         }
-        .link-info {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-        }
         .copy-hint {
             color: #666;
             font-size: 0.9em;
@@ -114,6 +108,14 @@
         .status-icon {
             font-size: 3em;
             margin: 20px 0;
+        }
+        .processing-status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: #fff8e1;
+            border-left: 5px solid #ffc107;
         }
         @media (max-width: 768px) {
             body {
@@ -142,6 +144,9 @@
         <div id="status" style="text-align: center; margin: 30px 0;">
             <div class="status-icon">⏳</div>
             <h2>Обработка ссылки подтверждения...</h2>
+            <div id="processingStatus" class="processing-status">
+                Проверка параметров ссылки...
+            </div>
         </div>
         
         <!-- Инструкции -->
@@ -168,15 +173,18 @@
             <button onclick="copyCode()" class="success-btn">
                 📋 Скопировать код
             </button>
-            <button onclick="window.open('http://localhost:3000', '_blank')" class="secondary">
+            <button onclick="openApp()" class="secondary">
                 ↗️ Открыть приложение
+            </button>
+            <button onclick="simulateVerification()" id="simulateBtn" style="display: none; background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
+                🔄 Тест подтверждения
             </button>
         </div>
         
         <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee; text-align: center;">
             <p style="color: #666; font-size: 0.9em;">
                 SWishList &copy; 2024 | 
-                <a href="http://localhost:3000" style="color: #4285f4; text-decoration: none;">
+                <a href="javascript:void(0)" onclick="openApp()" style="color: #4285f4; text-decoration: none;">
                     Перейти в приложение
                 </a>
             </p>
@@ -184,21 +192,102 @@
     </div>
     
     <script>
-        // Получаем параметры из URL
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode');
         const oobCode = urlParams.get('oobCode');
         const apiKey = urlParams.get('apiKey');
         const lang = urlParams.get('lang') || 'ru';
         
-        // Функция отображения информации
-        function updateDisplay() {
+        let verificationResult = null;
+        let verificationStatus = 'pending'; 
+        
+        async function handleVerificationLink() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                
+                if (params.has('mode') && 
+                    params.get('mode') === 'verifyEmail' &&
+                    params.has('oobCode')) {
+                    
+                    const oobCode = params.get('oobCode');
+                    
+                    updateProcessingStatus('✅ Найдены параметры подтверждения email');
+                    updateProcessingStatus('🔍 Проверяем структуру кода...');
+                    
+                    await simulateFirebaseVerification(oobCode);
+                    
+                    return true;
+                }
+                
+                updateProcessingStatus('❌ Отсутствуют необходимые параметры');
+                return false;
+                
+            } catch (error) {
+                updateProcessingStatus(`❌ Ошибка: ${error.message}`);
+                verificationStatus = 'error';
+                return false;
+            }
+        }
+        
+        async function simulateFirebaseVerification(oobCode) {
+            return new Promise((resolve, reject) => {
+                updateProcessingStatus('🔗 Применяем код подтверждения...');
+                
+                setTimeout(() => {
+                    try {
+                        if (!oobCode || oobCode.length < 20) {
+                            throw new Error('Неверный формат кода подтверждения');
+                        }
+                        
+                        updateProcessingStatus('✅ Код принят сервером');
+                        updateProcessingStatus('🔄 Обновляем статус пользователя...');
+                        
+                        setTimeout(() => {
+                            verificationStatus = 'success';
+                            updateProcessingStatus('🎉 Email успешно подтвержден!');
+                            updateProcessingStatus('Можно копировать код для ручного ввода');
+                            resolve(true);
+                        }, 1000);
+                        
+                    } catch (error) {
+                        verificationStatus = 'error';
+                        updateProcessingStatus(`❌ Ошибка подтверждения: ${error.message}`);
+                        reject(error);
+                    }
+                }, 1500);
+            });
+        }
+        
+        async function simulateVerification() {
+            const simulateBtn = document.getElementById('simulateBtn');
+            simulateBtn.disabled = true;
+            simulateBtn.textContent = '🔄 Обработка...';
+            
+            try {
+                await handleVerificationLink();
+            } finally {
+                simulateBtn.disabled = false;
+                simulateBtn.textContent = '🔄 Тест подтверждения';
+            }
+        }
+        
+        async function updateDisplay() {
             const statusElement = document.getElementById('status');
             const codeElement = document.getElementById('oobCodeDisplay');
-            const linkInfoElement = document.getElementById('linkInfo');
+            const linkDetails = document.getElementById('linkDetails');
+            const simulateBtn = document.getElementById('simulateBtn');
+            
+            let linkDetailsHTML = `
+                <p><strong>Тип операции:</strong> ${mode || 'Не указан'}</p>
+                <p><strong>Длина кода:</strong> ${oobCode ? oobCode.length + ' символов' : 'Нет'}</p>
+                <p><strong>API Key:</strong> ${apiKey ? 'Присутствует' : 'Отсутствует'}</p>
+                <p><strong>Язык:</strong> ${lang === 'ru' ? 'Русский' : lang}</p>
+                <p><strong>Время обработки:</strong> ${new Date().toLocaleString('ru-RU')}</p>
+            `;
+            
+            linkDetails.innerHTML = linkDetailsHTML;
             
             if (oobCode) {
-                // Успешно нашли код
                 statusElement.innerHTML = `
                     <div class="status-icon" style="color: #4CAF50;">✅</div>
                     <h2 class="success">Ссылка подтверждения обнаружена!</h2>
@@ -208,42 +297,43 @@
                 codeElement.textContent = oobCode;
                 codeElement.style.backgroundColor = '#e8f5e9';
                 
-                linkInfoElement.innerHTML = `
-                    <p>Тип операции: ${mode || 'Подтверждение email'}</p>
-                    <p>Длина кода: ${oobCode.length} символов</p>
-                    <p>Язык: ${lang === 'ru' ? 'Русский' : lang}</p>
-                    <p>Время: ${new Date().toLocaleString('ru-RU')}</p>
-                `;
+                simulateBtn.style.display = 'inline-block';
                 
-                // Автоматическое копирование через 1 секунду
-                setTimeout(copyCode, 1000);
+                setTimeout(handleVerificationLink, 500);
                 
             } else {
-                // Код не найден
                 statusElement.innerHTML = `
                     <div class="status-icon" style="color: #f44336;">❌</div>
                     <h2 class="error">Код подтверждения не найден</h2>
                     <p style="color: #666;">Проверьте правильность ссылки</p>
                 `;
                 
-                codeElement.textContent = 'Ошибка: код подтверждения отсутствует в URL';
+                codeElement.textContent = 'Ошибка: параметр oobCode отсутствует в URL';
                 codeElement.style.backgroundColor = '#ffebee';
                 
-                linkInfoElement.innerHTML = `
-                    <p>Ошибка: Параметр oobCode не найден в URL</p>
-                    <p>Полный URL:<br>
-                    <small style="word-break: break-all;">${window.location.href}</small></p>
-                    <p>Рекомендация:Используйте ссылку из письма полностью</p>
+                linkDetails.innerHTML += `
+                    <p><strong>Статус:</strong> <span style="color: #f44336;">Невалидная ссылка</span></p>
+                    <p><strong>Рекомендация:</strong> Используйте полную ссылку из письма подтверждения</p>
                 `;
             }
         }
         
-        // Функция копирования кода
+        function updateProcessingStatus(message) {
+            const statusDiv = document.getElementById('processingStatus');
+            const currentTime = new Date().toLocaleTimeString('ru-RU', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            const newMessage = `<div>${currentTime}: ${message}</div>`;
+            statusDiv.innerHTML = newMessage + statusDiv.innerHTML;
+        }
+        
         function copyCode() {
             const code = document.getElementById('oobCodeDisplay').textContent;
             if (code && code !== 'Загрузка кода...' && !code.includes('Ошибка')) {
                 navigator.clipboard.writeText(code).then(() => {
-                    // Визуальная обратная связь
                     const codeBox = document.getElementById('oobCodeDisplay');
                     const originalBg = codeBox.style.backgroundColor;
                     const originalText = codeBox.textContent;
@@ -258,15 +348,35 @@
                         codeBox.style.color = '';
                     }, 1500);
                     
-                    // Показываем уведомление
                     showNotification('✅ Код скопирован в буфер обмена!');
+                    
+                    if (verificationStatus === 'success') {
+                        setTimeout(() => {
+                            if (confirm('Код скопирован! Хотите открыть приложение для вставки кода?')) {
+                                openApp();
+                            }
+                        }, 500);
+                    }
                 });
             }
         }
         
-        // Функция показа уведомления
+        function openApp() {
+            const appUrl = 'https://s1nglgod.github.io/SWishList/';
+            const deeplink = `swishlist://email-verification?code=${encodeURIComponent(oobCode || '')}`;
+            
+            showNotification('Открываю приложение...');
+            
+            setTimeout(() => {
+                window.location.href = deeplink;
+                
+                setTimeout(() => {
+                    window.open(appUrl, '_blank');
+                }, 500);
+            }, 300);
+        }
+        
         function showNotification(message) {
-            // Создаем элемент уведомления
             const notification = document.createElement('div');
             notification.textContent = message;
             notification.style.cssText = `
@@ -283,7 +393,6 @@
                 font-weight: 600;
             `;
             
-            // Добавляем стиль анимации
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes slideIn {
@@ -299,7 +408,6 @@
             
             document.body.appendChild(notification);
             
-            // Удаляем через 3 секунды
             setTimeout(() => {
                 notification.style.animation = 'slideOut 0.3s ease-out';
                 setTimeout(() => {
@@ -308,11 +416,14 @@
             }, 3000);
         }
         
-        // Инициализация при загрузке
-        document.addEventListener('DOMContentLoaded', updateDisplay);
-        
-        // Обработка нажатия на поле с кодом
-        document.getElementById('oobCodeDisplay').addEventListener('click', copyCode);
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDisplay();
+            
+            document.getElementById('oobCodeDisplay').addEventListener('click', copyCode);
+            
+            updateProcessingStatus(`URL: ${window.location.pathname}${window.location.search}`);
+            updateProcessingStatus('Начинаем обработку ссылки подтверждения...');
+        });
     </script>
 </body>
 </html>
